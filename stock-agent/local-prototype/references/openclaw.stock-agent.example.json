@@ -1,7 +1,6 @@
 ?{
   "plugins": {
     "enabled": true,
-    "allow": ["trading-plugin"],
     "load": {
       "paths": ["~/openclaw/extensions/trading-plugin"]
     },
@@ -33,18 +32,7 @@
           "akshare-research"
         ],
         "tools": {
-          "allow": [
-            "trading_agent",
-            "read",
-            "write",
-            "edit",
-            "process",
-            "cron",
-            "gateway",
-            "sessions_list",
-            "sessions_history",
-            "sessions_send"
-          ]
+          "allow": ["trading_agent", "read"]
         }
       }
     ]
@@ -64,9 +52,5 @@
         "prompt": "Review the last sync result, summarize failures, verify sync freshness, confirm coverage_summary is complete, restate the top 10 ETF gainers for 1-day, 3-day, and 5-day windows, and restate strategy_daily_report buy_list and sell_list."
       }
     ]
-  },
-  "hooks": {
-    "enabled": true,
-    "allowedAgentIds": ["trading-agent"]
   }
 }
