@@ -143,6 +143,48 @@ describe("trading_agent tool", () => {
     });
   });
 
+  it("requires symbol for technical_indicators", async () => {
+    const tool = createTradingAgentTool(fakeConfiguredApi() as never);
+
+    const result = await tool.execute("tool-tech-1", {
+      action: "technical_indicators",
+    });
+
+    expect(result).toMatchObject({
+      details: {
+        kind: "trading_tool_error",
+        action: "technical_indicators",
+        error: expect.stringContaining("symbol is required"),
+      },
+    });
+  });
+
+  it("builds technical_analysis args with include-series", () => {
+    expect(
+      buildCommandArgs(
+        {
+          action: "technical_analysis",
+          symbol: "159611",
+          end: "2026-03-12",
+          recentBars: 15,
+          includeSeries: true,
+        },
+        "../../stock-agent/trading-agent/data/industry.db",
+      ),
+    ).toEqual([
+      "technical-analysis",
+      "--db",
+      "../../stock-agent/trading-agent/data/industry.db",
+      "--symbol",
+      "159611",
+      "--end",
+      "2026-03-12",
+      "--recent-bars",
+      "15",
+      "--include-series",
+    ]);
+  });
+
   it("builds latest_price args", () => {
     expect(
       buildCommandArgs(

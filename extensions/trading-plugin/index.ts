@@ -5,7 +5,7 @@ import { createTradingAgentTool } from "./src/tool.js";
 const plugin = {
   id: "trading-plugin",
   name: "Trading Plugin",
-  description: "OpenClaw tool wrapper for the local stock-agent prototype",
+  description: "OpenClaw 的 trading-agent 运行时工具封装",
   configSchema: emptyPluginConfigSchema(),
   register(api: OpenClawPluginApi) {
     api.registerTool(createTradingAgentTool(api) as unknown as AnyAgentTool);

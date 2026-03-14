@@ -1,25 +1,30 @@
 # Trading Plugin
 
-This plugin exposes the local `stock-agent` prototype to OpenClaw as a single tool:
+这个插件把 `trading-agent` 正式运行时暴露给 OpenClaw，统一作为一个工具使用：
 
-- tool name: `trading_agent`
+- 工具名：`trading_agent`
 
-## Supported Actions
+## 支持动作
 
 - `sync_daily`
 - `sync_status`
 - `strategy_daily_report`
 - `top_movers`
+- `search_etf`
 - `etf_detail`
+- `technical_indicators`
+- `technical_analysis`
 - `batch_signal_150ma`
 
-## WSL Ubuntu Notes
+## WSL Ubuntu 说明
 
-- Default Python executable is `python3`
-- Point `scriptPath` to `stock-agent/local-prototype/scripts/stock_agent.py`
-- Point `dbPath` to the SQLite database used by `trading-agent`
+- 默认 Python 可执行文件是 `python3`
+- `scriptPath` 应指向 `stock-agent/trading-agent/scripts/stock_agent.py`
+- `dbPath` 指向 `trading-agent` 使用的 SQLite 数据库
+- 如果 `dbPath` 不存在，会先从 `bundledDbPath` 复制数据库
+- 如果数据库交易池为空，会用 `seedCsvPath` 自动导入候选 ETF CSV
 
-## Example Plugin Config
+## 示例配置
 
 ```json
 {
@@ -34,8 +39,10 @@ This plugin exposes the local `stock-agent` prototype to OpenClaw as a single to
         "enabled": true,
         "config": {
           "pythonBin": "python3",
-          "scriptPath": "~/openclaw/stock-agent/local-prototype/scripts/stock_agent.py",
-          "dbPath": "~/.openclaw/workspace-trading/data/industry.db"
+          "scriptPath": "~/openclaw/stock-agent/trading-agent/scripts/stock_agent.py",
+          "dbPath": "~/.openclaw/workspace-trading/data/industry.db",
+          "bundledDbPath": "~/openclaw/stock-agent/trading-agent/data/industry.db",
+          "seedCsvPath": "~/openclaw/stock-agent/trading-agent/data/industry-etf-candidates.csv"
         }
       }
     }
@@ -43,7 +50,7 @@ This plugin exposes the local `stock-agent` prototype to OpenClaw as a single to
 }
 ```
 
-## Example Tool Calls
+## 示例工具调用
 
 ```json
 { "action": "sync_status" }
@@ -58,5 +65,17 @@ This plugin exposes the local `stock-agent` prototype to OpenClaw as a single to
 ```
 
 ```json
+{ "action": "search_etf", "query": "电池ETF", "limit": 10 }
+```
+
+```json
 { "action": "etf_detail", "symbol": "512170", "recentBars": 10 }
+```
+
+```json
+{ "action": "technical_indicators", "symbol": "512170", "recentBars": 10 }
+```
+
+```json
+{ "action": "technical_analysis", "symbol": "512170", "recentBars": 10, "includeSeries": true }
 ```

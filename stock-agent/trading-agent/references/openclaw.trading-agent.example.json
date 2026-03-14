@@ -1,0 +1,42 @@
+﻿{
+  "plugins": {
+    "enabled": true,
+    "load": {
+      "paths": ["~/openclaw/extensions/trading-plugin"]
+    },
+    "entries": {
+      "trading-plugin": {
+        "enabled": true,
+        "config": {
+          "pythonBin": "python3",
+          "scriptPath": "~/openclaw/stock-agent/trading-agent/scripts/stock_agent.py",
+          "dbPath": "~/.openclaw/workspace-trading/data/industry.db",
+          "bundledDbPath": "~/openclaw/stock-agent/trading-agent/data/industry.db",
+          "seedCsvPath": "~/openclaw/stock-agent/trading-agent/data/industry-etf-candidates.csv"
+        }
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "maxConcurrent": 2
+    },
+    "list": [
+      {
+        "id": "trading-agent",
+        "workspace": "~/.openclaw/workspace-trading",
+        "skills": [
+          "trading-workflow",
+          "trading-risk-policy",
+          "trading-output-schema",
+          "backtest-review",
+          "sql-read-policy",
+          "akshare-research"
+        ],
+        "tools": {
+          "allow": ["trading_agent", "read"]
+        }
+      }
+    ]
+  }
+}

@@ -15,6 +15,8 @@ const ACTIONS = [
   "search_etf",
   "latest_price",
   "etf_detail",
+  "technical_indicators",
+  "technical_analysis",
   "batch_signal_150ma",
 ] as const;
 
@@ -38,6 +40,7 @@ type ToolParams = {
   top?: number;
   limit?: number;
   recentBars?: number;
+  includeSeries?: boolean;
   db?: string;
 };
 
@@ -65,6 +68,7 @@ export const TradingAgentToolSchema = Type.Object(
     top: Type.Optional(Type.Number({ description: "top_movers 返回的前 N 条记录。" })),
     limit: Type.Optional(Type.Number({ description: "search_etf 返回的最大记录数。" })),
     recentBars: Type.Optional(Type.Number({ description: "etf_detail 返回的最近 K 线数量。" })),
+    includeSeries: Type.Optional(Type.Boolean({ description: "是否返回最近若干条技术指标序列。" })),
     db: Type.Optional(Type.String({ description: "可选的数据库路径覆盖值。" })),
   },
   { additionalProperties: false },
@@ -104,6 +108,10 @@ export function summarizePayload(payload: unknown): string | undefined {
       return summarizeLatestPrice(record);
     case "etf_detail":
       return summarizeEtfDetail(record);
+    case "technical_indicators":
+      return summarizeTechnicalIndicators(record);
+    case "technical_analysis":
+      return summarizeTechnicalAnalysis(record);
     default:
       return undefined;
   }
@@ -158,6 +166,10 @@ function summarizeEtfDetail(record: Record<string, unknown>): string {
     record.latest_signal && typeof record.latest_signal === "object"
       ? (record.latest_signal as Record<string, unknown>)
       : undefined;
+  const technicalAnalysis =
+    record.technical_analysis && typeof record.technical_analysis === "object"
+      ? (record.technical_analysis as Record<string, unknown>)
+      : undefined;
 
   const lines = [
     "ETF 详情摘要：",
@@ -202,6 +214,70 @@ function summarizeEtfDetail(record: Record<string, unknown>): string {
     lines.push(
       `- latest_signal: action=${String(latestSignal.action ?? "-")}, trade_date=${String(latestSignal.trade_date ?? "-")}, ma150=${formatNumber(latestSignal.ma150, 4)}`,
     );
+  }
+  if (technicalAnalysis) {
+    const indicators =
+      technicalAnalysis.indicators && typeof technicalAnalysis.indicators === "object"
+        ? (technicalAnalysis.indicators as Record<string, unknown>)
+        : undefined;
+    if (indicators) {
+      lines.push(
+        `- technical: ma_150=${formatNumber(indicators.ma_150, 4)}, macd_hist=${formatNumber(indicators.macd_hist, 4)}, rsi_14=${formatNumber(indicators.rsi_14, 2)}, adx_14=${formatNumber(indicators.adx_14, 2)}`,
+      );
+    }
+  }
+  return lines.join("\n");
+}
+
+function summarizeTechnicalIndicators(record: Record<string, unknown>): string {
+  const indicators =
+    record.indicators && typeof record.indicators === "object"
+      ? (record.indicators as Record<string, unknown>)
+      : undefined;
+  return [
+    "技术指标摘要：",
+    `- symbol=${String(record.symbol ?? "-")}`,
+    `- name=${String(record.name ?? "-")}`,
+    `- sector=${String(record.sector_name ?? "-")}`,
+    `- trade_date=${String(record.trade_date ?? "-")}`,
+    `- ma_150=${formatNumber(indicators?.ma_150, 4)}`,
+    `- macd_hist=${formatNumber(indicators?.macd_hist, 4)}`,
+    `- rsi_14=${formatNumber(indicators?.rsi_14, 2)}`,
+    `- adx_14=${formatNumber(indicators?.adx_14, 2)}`,
+  ].join("\n");
+}
+
+function summarizeTechnicalAnalysis(record: Record<string, unknown>): string {
+  const indicators =
+    record.indicators && typeof record.indicators === "object"
+      ? (record.indicators as Record<string, unknown>)
+      : undefined;
+  const series = Array.isArray(record.series) ? record.series : [];
+  const lines = [
+    "技术分析摘要：",
+    `- symbol=${String(record.symbol ?? "-")}`,
+    `- name=${String(record.name ?? "-")}`,
+    `- sector=${String(record.sector_name ?? "-")}`,
+    `- trade_date=${String(record.trade_date ?? "-")}`,
+    `- ma_150=${formatNumber(indicators?.ma_150, 4)}`,
+    `- macd_hist=${formatNumber(indicators?.macd_hist, 4)}`,
+    `- rsi_14=${formatNumber(indicators?.rsi_14, 2)}`,
+    `- adx_14=${formatNumber(indicators?.adx_14, 2)}`,
+  ];
+  if (series.length > 0) {
+    const compact = series
+      .slice(-5)
+      .map((item) => {
+        if (!item || typeof item !== "object") {
+          return undefined;
+        }
+        const row = item as Record<string, unknown>;
+        return `${String(row.trade_date ?? "-")}:ma150=${formatNumber(row.ma_150, 4)}/rsi14=${formatNumber(row.rsi_14, 2)}`;
+      })
+      .filter(Boolean);
+    if (compact.length > 0) {
+      lines.push(`- recent_series: ${compact.join(", ")}`);
+    }
   }
   return lines.join("\n");
 }
@@ -343,6 +419,47 @@ export function buildCommandArgs(params: ToolParams, dbPath: string): string[] {
       }
       if (typeof params.recentBars === "number" && Number.isFinite(params.recentBars)) {
         args.push("--recent-bars", String(Math.trunc(params.recentBars)));
+      }
+      return args;
+    }
+    case "technical_indicators": {
+      const args = [
+        "technical-indicators",
+        "--db",
+        dbPath,
+        "--symbol",
+        requireString(params.symbol, "symbol"),
+      ];
+      if (params.start) {
+        args.push("--start", params.start);
+      }
+      if (params.end) {
+        args.push("--end", params.end);
+      }
+      if (typeof params.recentBars === "number" && Number.isFinite(params.recentBars)) {
+        args.push("--recent-bars", String(Math.trunc(params.recentBars)));
+      }
+      return args;
+    }
+    case "technical_analysis": {
+      const args = [
+        "technical-analysis",
+        "--db",
+        dbPath,
+        "--symbol",
+        requireString(params.symbol, "symbol"),
+      ];
+      if (params.start) {
+        args.push("--start", params.start);
+      }
+      if (params.end) {
+        args.push("--end", params.end);
+      }
+      if (typeof params.recentBars === "number" && Number.isFinite(params.recentBars)) {
+        args.push("--recent-bars", String(Math.trunc(params.recentBars)));
+      }
+      if (params.includeSeries) {
+        args.push("--include-series");
       }
       return args;
     }

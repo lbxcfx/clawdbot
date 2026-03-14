@@ -46,10 +46,61 @@ describe("trading_agent payload summaries", () => {
         trade_date: "2026-03-12",
         ma150: 1.0358,
       },
+      technical_analysis: {
+        indicators: {
+          ma_150: 1.0358,
+          macd_hist: 0.0123,
+          rsi_14: 61.5,
+          adx_14: 28.6,
+        },
+      },
     });
 
     expect(text).toContain("ETF 详情摘要");
     expect(text).toContain("recent_closes");
     expect(text).toContain("latest_signal");
+    expect(text).toContain("technical:");
+  });
+
+  it("summarizes technical_indicators payload", () => {
+    const text = summarizePayload({
+      kind: "technical_indicators",
+      symbol: "159611",
+      name: "电力ETF",
+      sector_name: "电力",
+      trade_date: "2026-03-12",
+      indicators: {
+        ma_150: 1.0358,
+        macd_hist: 0.0123,
+        rsi_14: 61.5,
+        adx_14: 28.6,
+      },
+    });
+
+    expect(text).toContain("技术指标摘要");
+    expect(text).toContain("ma_150=1.0358");
+  });
+
+  it("summarizes technical_analysis payload", () => {
+    const text = summarizePayload({
+      kind: "technical_analysis",
+      symbol: "159611",
+      name: "电力ETF",
+      sector_name: "电力",
+      trade_date: "2026-03-12",
+      indicators: {
+        ma_150: 1.0358,
+        macd_hist: 0.0123,
+        rsi_14: 61.5,
+        adx_14: 28.6,
+      },
+      series: [
+        { trade_date: "2026-03-11", ma_150: 1.029, rsi_14: 59.8 },
+        { trade_date: "2026-03-12", ma_150: 1.0358, rsi_14: 61.5 },
+      ],
+    });
+
+    expect(text).toContain("技术分析摘要");
+    expect(text).toContain("recent_series");
   });
 });

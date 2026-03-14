@@ -1,7 +1,7 @@
 {
   "name": "@openclaw/trading-plugin",
   "version": "2026.3.11",
-  "description": "OpenClaw trading agent plugin for the local stock-agent prototype",
+  "description": "OpenClaw 的 trading-agent 正式运行时插件",
   "type": "module",
   "dependencies": {
     "@sinclair/typebox": "0.34.48"

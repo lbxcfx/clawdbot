@@ -1,0 +1,13 @@
+{
+  "strategyId": "strategy-150MA",
+  "version": "v1",
+  "marketScope": "cn-sector-etf-core",
+  "timeframe": "1d",
+  "indicatorRef": {
+    "maField": "ma_150"
+  },
+  "signalRule": {
+    "buy": "close crosses above ma150",
+    "sell": "close crosses below ma150"
+  }
+}
