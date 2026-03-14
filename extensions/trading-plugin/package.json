@@ -1,0 +1,22 @@
+{
+  "name": "@openclaw/trading-plugin",
+  "version": "2026.3.11",
+  "description": "OpenClaw trading agent plugin for the local stock-agent prototype",
+  "type": "module",
+  "dependencies": {
+    "@sinclair/typebox": "0.34.48"
+  },
+  "devDependencies": {
+    "openclaw": "2026.3.11"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "install": {
+      "npmSpec": "@openclaw/trading-plugin",
+      "localPath": "extensions/trading-plugin",
+      "defaultChoice": "local"
+    }
+  }
+}

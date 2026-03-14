@@ -1,0 +1,72 @@
+?{
+  "plugins": {
+    "enabled": true,
+    "allow": ["trading-plugin"],
+    "load": {
+      "paths": ["~/openclaw/extensions/trading-plugin"]
+    },
+    "entries": {
+      "trading-plugin": {
+        "enabled": true,
+        "config": {
+          "pythonBin": "python3",
+          "scriptPath": "~/openclaw/stock-agent/local-prototype/scripts/stock_agent.py",
+          "dbPath": "~/.openclaw/workspace-trading/data/industry.db"
+        }
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "maxConcurrent": 2
+    },
+    "list": [
+      {
+        "id": "trading-agent",
+        "workspace": "~/.openclaw/workspace-trading",
+        "skills": [
+          "trading-workflow",
+          "trading-risk-policy",
+          "trading-output-schema",
+          "backtest-review",
+          "sql-read-policy",
+          "akshare-research"
+        ],
+        "tools": {
+          "allow": [
+            "trading_agent",
+            "read",
+            "write",
+            "edit",
+            "process",
+            "cron",
+            "gateway",
+            "sessions_list",
+            "sessions_history",
+            "sessions_send"
+          ]
+        }
+      }
+    ]
+  },
+  "cron": {
+    "jobs": [
+      {
+        "id": "trading-daily-bars-sync",
+        "agentId": "trading-agent",
+        "schedule": "0 16 * * 1-5",
+        "prompt": "At 16:00 local market time, run the stock-agent local prototype sync-daily for the trading database, then summarize the sync_report including coverage_summary, top_movers for 1-day, 3-day, and 5-day windows, and strategy_daily_report with buy_list and sell_list."
+      },
+      {
+        "id": "trading-daily-postcheck",
+        "agentId": "trading-agent",
+        "schedule": "10 16 * * 1-5",
+        "prompt": "Review the last sync result, summarize failures, verify sync freshness, confirm coverage_summary is complete, restate the top 10 ETF gainers for 1-day, 3-day, and 5-day windows, and restate strategy_daily_report buy_list and sell_list."
+      }
+    ]
+  },
+  "hooks": {
+    "enabled": true,
+    "allowedAgentIds": ["trading-agent"]
+  }
+}

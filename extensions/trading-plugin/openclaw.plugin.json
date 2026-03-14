@@ -1,0 +1,23 @@
+{
+  "id": "trading-plugin",
+  "name": "Trading Plugin",
+  "description": "OpenClaw bridge tool for the local stock-agent prototype.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "pythonBin": {
+        "type": "string",
+        "description": "Python executable for the stock-agent prototype. On WSL/Linux prefer python3."
+      },
+      "scriptPath": {
+        "type": "string",
+        "description": "Path to stock-agent/local-prototype/scripts/stock_agent.py."
+      },
+      "dbPath": {
+        "type": "string",
+        "description": "Path to the SQLite trading database."
+      }
+    }
+  }
+}
