@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+﻿import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const execFileState = vi.hoisted(() => ({
   execFile: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock("node:child_process", async (importOriginal) => {
   };
 });
 
-import { createTradingAgentTool } from "./tool.js";
+import { buildCommandArgs, createTradingAgentTool } from "./tool.js";
 
 function fakeApi(overrides: Record<string, unknown> = {}) {
   return {
@@ -39,12 +39,26 @@ function fakeApi(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function fakeConfiguredApi() {
+  return fakeApi({
+    resolvePath: (p: string) => p,
+    pluginConfig: {
+      pythonBin: "python3",
+      scriptPath: "/workspace/stock-agent/trading-agent/scripts/stock_agent.py",
+      dbPath: "/workspace/.openclaw/workspace-trading-agent/data/industry.db",
+      bundledDbPath: "/workspace/stock-agent/trading-agent/data/industry.db",
+      seedCsvPath: "/workspace/stock-agent/trading-agent/data/industry-etf-candidates.csv",
+    },
+  });
+}
+
 describe("trading_agent tool", () => {
   beforeEach(() => {
     execFileState.execFile.mockReset();
   });
 
-  it("runs strategy_daily_report with configured python and paths", async () => {
+  it("runs bootstrap before strategy_daily_report", async () => {
+    let callIndex = 0;
     execFileState.execFile.mockImplementation(
       (
         _file: string,
@@ -52,17 +66,45 @@ describe("trading_agent tool", () => {
         _options: Record<string, unknown>,
         callback: (error: Error | null, stdout: string, stderr: string) => void,
       ) => {
-        callback(null, JSON.stringify({ kind: "strategy_daily_report", sell_count: 4 }), "");
+        callIndex += 1;
+        if (callIndex === 1) {
+          callback(
+            null,
+            JSON.stringify({ kind: "bootstrap_db", seeded: false, universe_symbols: 2 }),
+            "",
+          );
+        } else {
+          callback(null, JSON.stringify({ kind: "strategy_daily_report", sell_count: 4 }), "");
+        }
         return {} as never;
       },
     );
 
+    expect(
+      buildCommandArgs(
+        {
+          action: "strategy_daily_report",
+          tradeDate: "2026-03-12",
+        },
+        "/workspace/.openclaw/workspace-trading/data/industry.db",
+      ),
+    ).toEqual([
+      "strategy-daily-report",
+      "--db",
+      "/workspace/.openclaw/workspace-trading/data/industry.db",
+      "--trade-date",
+      "2026-03-12",
+    ]);
+
     const tool = createTradingAgentTool(
       fakeApi({
+        resolvePath: (p: string) => p,
         pluginConfig: {
           pythonBin: "python3",
-          scriptPath: "/workspace/stock-agent/local-prototype/scripts/stock_agent.py",
+          scriptPath: "/workspace/stock-agent/trading-agent/scripts/stock_agent.py",
           dbPath: "/workspace/.openclaw/workspace-trading/data/industry.db",
+          bundledDbPath: "/workspace/stock-agent/trading-agent/data/industry.db",
+          seedCsvPath: "/workspace/stock-agent/trading-agent/data/industry-etf-candidates.csv",
         },
       }) as never,
     );
@@ -72,20 +114,21 @@ describe("trading_agent tool", () => {
       tradeDate: "2026-03-12",
     });
 
-    expect(execFileState.execFile).toHaveBeenCalledTimes(1);
-    expect(execFileState.execFile.mock.calls[0]?.[0]).toBe("python3");
-    expect(execFileState.execFile.mock.calls[0]?.[1]).toEqual([
-      "/workspace/stock-agent/local-prototype/scripts/stock_agent.py",
-      "strategy-daily-report",
+    expect(execFileState.execFile).toHaveBeenCalled();
+    const firstCall = execFileState.execFile.mock.calls[0];
+    expect(firstCall?.[0]).toBe("python3");
+    expect(firstCall?.[1]).toEqual([
+      "/workspace/stock-agent/trading-agent/scripts/stock_agent.py",
+      "bootstrap-db",
       "--db",
       "/workspace/.openclaw/workspace-trading/data/industry.db",
-      "--trade-date",
-      "2026-03-12",
+      "--csv",
+      "/workspace/stock-agent/trading-agent/data/industry-etf-candidates.csv",
     ]);
   });
 
   it("requires symbol for etf_detail", async () => {
-    const tool = createTradingAgentTool(fakeApi() as never);
+    const tool = createTradingAgentTool(fakeConfiguredApi() as never);
 
     const result = await tool.execute("tool-2", {
       action: "etf_detail",
@@ -98,6 +141,24 @@ describe("trading_agent tool", () => {
         error: expect.stringContaining("symbol is required"),
       },
     });
+  });
+
+  it("builds latest_price args", () => {
+    expect(
+      buildCommandArgs(
+        {
+          action: "latest_price",
+          symbol: "159611",
+        },
+        "../../stock-agent/trading-agent/data/industry.db",
+      ),
+    ).toEqual([
+      "latest-price",
+      "--db",
+      "../../stock-agent/trading-agent/data/industry.db",
+      "--symbol",
+      "159611",
+    ]);
   });
 
   it("returns trading_tool_error on invalid json output", async () => {
@@ -113,7 +174,7 @@ describe("trading_agent tool", () => {
       },
     );
 
-    const tool = createTradingAgentTool(fakeApi() as never);
+    const tool = createTradingAgentTool(fakeConfiguredApi() as never);
     const result = await tool.execute("tool-3", {
       action: "sync_status",
     });
@@ -124,5 +185,74 @@ describe("trading_agent tool", () => {
         action: "sync_status",
       },
     });
+  });
+
+  it("builds search_etf args and runs bootstrap first", async () => {
+    let callIndex = 0;
+    execFileState.execFile.mockImplementation(
+      (
+        _file: string,
+        _args: string[],
+        _options: Record<string, unknown>,
+        callback: (error: Error | null, stdout: string, stderr: string) => void,
+      ) => {
+        callIndex += 1;
+        if (callIndex === 1) {
+          callback(
+            null,
+            JSON.stringify({ kind: "bootstrap_db", seeded: false, universe_symbols: 2 }),
+            "",
+          );
+        } else {
+          callback(
+            null,
+            JSON.stringify({
+              kind: "etf_search",
+              query: "电池ETF",
+              match_count: 2,
+              resolved_symbol: null,
+            }),
+            "",
+          );
+        }
+        return {} as never;
+      },
+    );
+
+    expect(
+      buildCommandArgs(
+        {
+          action: "search_etf",
+          query: "电池ETF",
+          limit: 5,
+        },
+        "../../stock-agent/trading-agent/data/industry.db",
+      ),
+    ).toEqual([
+      "search-etf",
+      "--db",
+      "../../stock-agent/trading-agent/data/industry.db",
+      "--query",
+      "电池ETF",
+      "--limit",
+      "5",
+    ]);
+
+    const tool = createTradingAgentTool(fakeApi() as never);
+    await tool.execute("tool-4", {
+      action: "search_etf",
+      query: "电池ETF",
+      limit: 5,
+    });
+
+    const firstCall = execFileState.execFile.mock.calls[0];
+    expect(firstCall?.[1]).toEqual([
+      "../../stock-agent/trading-agent/scripts/stock_agent.py",
+      "bootstrap-db",
+      "--db",
+      "../../stock-agent/trading-agent/data/industry.db",
+      "--csv",
+      "../../stock-agent/trading-agent/data/industry-etf-candidates.csv",
+    ]);
   });
 });
